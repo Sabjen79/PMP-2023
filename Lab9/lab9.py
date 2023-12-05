@@ -1,48 +1,44 @@
 import pymc as pm
 import pandas as pd
 import numpy as np
-import arviz as az
 import matplotlib.pyplot as plt
 
-data = pd.read_csv('Prices.csv')
+df = pd.read_csv('Admission.csv')
+print(df.head())
 
-price = data['Price']
-processor_speed = data['Speed']
-hard_drive_size = np.log(data['HardDrive'])
+data = {
+    'GRE': np.array(df['GRE']),
+    'GPA': np.array(df['GPA']),
+    'Admission': np.array(df['Admission'])
+}
 
+# Ex1
 with pm.Model() as model:
-    alpha = pm.Normal('alpha', mu=0, sigma=10)
-    beta1 = pm.Normal('beta1', mu=0, sigma=10)
-    beta2 = pm.Normal('beta2', mu=0, sigma=10)
-    sigma = pm.HalfNormal('sigma', sigma=1)
+    trace = pm.sample(1000, tune=1000)
 
-    mu = alpha + beta1 * processor_speed + beta2 * hard_drive_size
+mean_betas = [np.mean(trace['beta0']), np.mean(trace['beta1']), np.mean(trace['beta2'])]
+decision = -mean_betas[0] / mean_betas[2] - (mean_betas[1] / mean_betas[2]) * data['GRE']
 
-    likelihood = pm.Normal('likelihood', mu=mu, sigma=sigma, observed=price)
+hdi = pm.stats.hpd(trace, hdi_prob=0.94)
 
-    trace = pm.sample(1000, tune=1000, cores=1)
+# Ex2
+plt.scatter(data['GRE'], data['GPA'], c=data['Admission'], cmap='viridis')
+plt.plot(data['GRE'], decision, label='Decision Boundary', color='red')
+plt.fill_between(data['GRE'], hdi[:, 1] / mean_betas[2] + hdi[:, 0] / mean_betas[2], alpha=0.3, color='blue', label='94% HDI')
+plt.xlabel('GRE')
+plt.ylabel('GPA')
+plt.legend()
+plt.show()
 
-#HDI
-beta1_hdi = pm.hdi(trace.posterior['beta1'], hdi_prob=0.95)
-beta2_hdi = pm.hdi(trace.posterior['beta2'], hdi_prob=0.95)
+# Ex 3.
+new_student_data_1 = {'GRE': 550, 'GPA': 3.5}
+new_pi_1 = pm.math.sigmoid(mean_betas[0] + mean_betas[1] * new_student_data_1['GRE'] + mean_betas[2] * new_student_data_1['GPA'])
+new_hdi_1 = pm.stats.hpd(new_pi_1)
 
-print(f"HDI pentru beta1: {beta1_hdi.beta1.data}")
-print(f"HDI pentru beta1: {beta2_hdi.beta2.data}")
+# Ex 4
+new_student_data_2 = {'GRE': 500, 'GPA': 3.2}
+new_pi_2 = pm.math.sigmoid(mean_betas[0] + mean_betas[1] * new_student_data_2['GRE'] + mean_betas[2] * new_student_data_2['GPA'])
+new_hdi_2 = pm.stats.hpd(new_pi_2)
 
-# 3. Frecventa procesorului si marimea hard diskului sunt predictori utili intrucat sunt rezultatele HDI sunt diferite de 0
-
-with pm.Model() as model2:
-    alpha = pm.Normal('alpha', mu=0, sigma=10)
-    beta1 = pm.Normal('beta1', mu=0, sigma=10)
-    beta2 = pm.Normal('beta2', mu=0, sigma=10)
-    sigma = pm.HalfNormal('sigma', sigma=1)
-
-    mu = alpha + beta1 * 33 + beta2 * np.log(540)
-
-    likelihood = pm.Normal('likelihood', mu=mu, sigma=sigma, observed=price)
-
-    trace2 = pm.sample(5000, tune=1000, cores=1, return_inferencedata=True)
-
-#HDI
-hdi = pm.hdi(trace2.posterior['likelihood'], hdi_prob=0.90)
-print(hdi)
+print(f"Interval HDI pentru studentul 550 și GPA 3.5: {new_hdi_1}")
+print(f"Interval HDI pentru studentul 500 și GPA 3.2: {new_hdi_2}")
