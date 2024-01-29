@@ -25,8 +25,8 @@ for data in [rm, crim, indus]:
         idata = pm.sample(1000, cores=1, return_inferencedata=True)
 
     # c - 95% HDI pentru fiecare variabila independenta, in raport cu medv
-    az.plot_forest(idata,hdi_prob=0.95,var_names=['medv_pred'])
-    az.summary(idata,hdi_prob=0.95,var_names=['medv_pred'])
+    az.plot_forest(idata,hdi_prob=0.95,var_names=['beta'])
+    az.summary(idata,hdi_prob=0.95,var_names=['beta'])
     plt.show()
 
     ppc = pm.sample_posterior_predictive(idata, model=idata)
