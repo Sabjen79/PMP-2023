@@ -16,15 +16,21 @@ medv = Dataset['medv'].values.astype(float)
 # b - rm, crim, indus in raport cu medv
 
 for data in [rm, crim, indus]:
-    with pm.Model() as model_regression:        # b
+    with pm.Model() as model:
         alfa = pm.Normal('alfa', mu=0, sigma=1000)
         beta = pm.Normal('beta', mu=0, sigma=1000)
         eps = pm.HalfCauchy('eps', 5000)
         niu = pm.Deterministic('niu', data * beta + alfa)
         medv_pred = pm.Normal('medv_pred', mu=niu, sigma=eps, observed=medv)
-        idata = pm.sample(2000, return_inferencedata=True)
+        idata = pm.sample(1000, cores=1, return_inferencedata=True)
 
-    az.plot_trace(idata, var_names=['alfa', 'beta', 'eps'])
+    # c - 95% HDI pentru fiecare variabila independenta, in raport cu medv
+    az.plot_forest(idata,hdi_prob=0.95,var_names=['medv_pred'])
+    az.summary(idata,hdi_prob=0.95,var_names=['medv_pred'])
     plt.show()
 
-# c - 95% HDI
+    ppc = pm.sample_posterior_predictive(idata, model=idata)
+    az.plot_hdi(data, ppc['posterior_predictive']['medv_pred'], hdi_prob=0.50, color='gray', smooth=False)
+    plt.show()
+
+
