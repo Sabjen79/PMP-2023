@@ -29,7 +29,7 @@ for data in [rm, crim, indus]:
     az.summary(idata,hdi_prob=0.95,var_names=['beta'])
     plt.show()
 
-    ppc = pm.sample_posterior_predictive(idata, model=idata)
+    ppc = pm.sample_posterior_predictive(idata, model=model)
     az.plot_hdi(data, ppc['posterior_predictive']['medv_pred'], hdi_prob=0.50, color='gray', smooth=False)
     plt.show()
 
